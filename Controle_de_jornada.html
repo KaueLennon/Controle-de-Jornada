@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Jornada</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-image: linear-gradient(45deg, cyan, #2869EB);
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tela-hora {
+      background-color: rgba(0, 0, 0, 0.85);
+      padding: 50px 60px;
+      border-radius: 15px;
+      color: white;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      width: 340px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 15px 0 5px;
+      font-size: 14px;
+      color: #ddd;
+    }
+
+    input[type="time"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background-color: #fff;
+      color: #000;
+      font-size: 15px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      transition: 0.3s;
+    }
+
+    input[type="time"]:focus {
+      outline: none;
+      border-color: #00bfff;
+      box-shadow: 0 0 5px #00bfff;
+    }
+
+    button {
+      background-color: dodgerblue;
+      border: none;
+      padding: 15px;
+      width: 100%;
+      border-radius: 10px;
+      color: white;
+      font-size: 15px;
+      margin-top: 25px;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: deepskyblue;
+      cursor: pointer;
+      transform: scale(1.03);
+    }
+
+    .result {
+      margin-top: 25px;
+      background-color: rgba(0, 0, 0, 0.0);
+      border-radius: 10px;
+      padding: 5px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .result p {
+      margin: 6px 0;
+    }
+
+    .error {
+      color: #ff4444;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="tela-hora">
+    <h1>Controle Jornada</h1>
+    <label for="entrada">Horário de Entrada</label>
+    <input type="time" id="entrada">
+
+    <label for="almocoInicio">Início do Almoço</label>
+    <input type="time" id="almocoInicio">
+
+    <label for="almocoFim">Fim do Almoço</label>
+    <input type="time" id="almocoFim">
+
+    <button onclick="calcular()">Calcular</button>
+
+    <div class="result" id="resultado"></div>
+  </div>
+
+  <script>
+    function toMinutes(timeStr) {
+      const [h, m] = timeStr.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function toHHMM(minutes) {
+      const h = Math.floor(Math.abs(minutes) / 60).toString().padStart(2, "0");
+      const m = Math.abs(minutes) % 60;
+      return `${h}:${m.toString().padStart(2, "0")}`;
+    }
+
+    function calcular() {
+      const entrada = document.getElementById("entrada").value;
+      const almocoInicio = document.getElementById("almocoInicio").value;
+      const almocoFim = document.getElementById("almocoFim").value;
+      const resultado = document.getElementById("resultado");
+
+      if (!entrada || !almocoInicio || !almocoFim) {
+        resultado.innerHTML = "<p class='error'>Preencha todos os campos!</p>";
+        return;
+      }
+
+      const entradaMin = toMinutes(entrada);
+      const almocoInicioMin = toMinutes(almocoInicio);
+      const almocoFimMin = toMinutes(almocoFim);
+
+      // Intervalo Real
+      const intervaloReal = almocoFimMin - almocoInicioMin;
+
+      // HE Intervalo
+      let heIntervalo = 0;
+      if (intervaloReal < 60) {
+        heIntervalo = 60 - intervaloReal;
+      }
+
+      // Saída Planejada: 09:48 (588min) - (60 - intervaloReal) + entrada
+      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin;
+
+      // Saída Limite: Saída Planejada + 01:12 (72min)
+      const saidaLimite = saidaPlanejada + 72;
+
+      // Tempo de Saída: Saída Planejada - agora
+      const agora = new Date();
+      const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+      let tempoSaida = saidaPlanejada - agoraMin;
+
+      // Inconsistências
+      const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
+      const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
+
+      resultado.innerHTML = `
+        <p><b>Intervalo Real:</b> ${toHHMM(intervaloReal)}</p>
+        <p><b>HE Intervalo:</b> ${toHHMM(heIntervalo)}</p>
+        <p><b>Saída Planejada:</b> ${toHHMM(saidaPlanejada)}</p>
+        <p><b>Saída Limite:</b> ${toHHMM(saidaLimite)}</p>
+        <p><b>Tempo de Saída:</b> ${tempoSaida >= 0 ? toHHMM(tempoSaida) : "-" + toHHMM(tempoSaida)}</p>
+        <hr>
+        <p><b>Inconsistência de Início Intervalo:</b> ${inconsistenciaInicioIntervalo}</p>
+        <p><b>Inconsistência de Intervalo:</b> ${inconsistenciaIntervalo}</p>
+      `;
+    }
+  </script>
+</body>
+</html>
