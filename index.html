@@ -110,12 +110,12 @@
   </div>
 
   <script>
-    function toMinutes(timeStr) {
+    function Converter_Para_Minutos(timeStr) {
       const [h, m] = timeStr.split(":").map(Number);
       return h * 60 + m;
     }
 
-    function toHHMM(minutes) {
+    function Converter_Para_Hora(minutes) {
       const h = Math.floor(Math.abs(minutes) / 60).toString().padStart(2, "0");
       const m = Math.abs(minutes) % 60;
       return `${h}:${m.toString().padStart(2, "0")}`;
@@ -132,43 +132,58 @@
         return;
       }
 
-      const entradaMin = toMinutes(entrada);
-      const almocoInicioMin = toMinutes(almocoInicio);
-      const almocoFimMin = toMinutes(almocoFim);
+
+      //Comentários para simular a Jornada//
+            
+      const entradaMin = Converter_Para_Minutos(entrada); //recebe 08:00
+      const almocoInicioMin = Converter_Para_Minutos(almocoInicio); // recebe 11:30
+      const almocoFimMin = Converter_Para_Minutos(almocoFim); // recebe 12:00
 
       // Intervalo Real
-      const intervaloReal = almocoFimMin - almocoInicioMin;
+      const intervaloReal = almocoFimMin - almocoInicioMin; //resultado de 30 minutos
 
       // HE Intervalo
       let heIntervalo = 0;
       if (intervaloReal < 60) {
-        heIntervalo = 60 - intervaloReal;
+        heIntervalo = 60 - intervaloReal; //60 - 30 = 30 minutos que gerou de HE
       }
 
-      // Saída Planejada: 09:48 (588min) - (60 - intervaloReal) + entrada
-      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin;
+      
+      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin; //588 - (60 -30) + 510 = 1068    --> 588 representa 09h48 em minutos
 
-      // Saída Limite: Saída Planejada + 01:12 (72min)
-      const saidaLimite = saidaPlanejada + 72;
+      
+      const saidaLimite = saidaPlanejada + 72; // 72 representa os minutos de 1h12
 
-      // Tempo de Saída: Saída Planejada - agora
+      
       const agora = new Date();
       const agoraMin = agora.getHours() * 60 + agora.getMinutes();
       let tempoSaida = saidaPlanejada - agoraMin;
+
+
 
       // Inconsistências
       const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
       const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
 
+      //Cores para Inconsistencias
+      const corInicio = inconsistenciaInicioIntervalo === "Sim" ? "red" : "none";
+      const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
+
+      const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
+
       resultado.innerHTML = `
-        <p><b>Intervalo Real:</b> ${toHHMM(intervaloReal)}</p>
-        <p><b>HE Intervalo:</b> ${toHHMM(heIntervalo)}</p>
-        <p><b>Saída Planejada:</b> ${toHHMM(saidaPlanejada)}</p>
-        <p><b>Saída Limite:</b> ${toHHMM(saidaLimite)}</p>
-        <p><b>Tempo de Saída:</b> ${tempoSaida >= 0 ? toHHMM(tempoSaida) : "-" + toHHMM(tempoSaida)}</p>
+        <p><b>Intervalo Real:</b> ${Converter_Para_Hora(intervaloReal)}</p>
+        <p><b>HE Intervalo:</b> ${Converter_Para_Hora(heIntervalo)}</p>
+        <p><b>Saída Planejada:</b> ${Converter_Para_Hora(saidaPlanejada)}</p>
+        <p><b>Saída Limite:</b> ${Converter_Para_Hora(saidaLimite)}</p>
+        ${tempoSaida >= 0 
+        ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>`: `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
+
         <hr>
-        <p><b>Inconsistência de Início Intervalo:</b> ${inconsistenciaInicioIntervalo}</p>
-        <p><b>Inconsistência de Intervalo:</b> ${inconsistenciaIntervalo}</p>
+        <p><b>Inconsistência de Início Intervalo:</b> 
+        <span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
+        <p><b>Inconsistência de Intervalo:</b> 
+        <span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
       `;
     }
   </script>
