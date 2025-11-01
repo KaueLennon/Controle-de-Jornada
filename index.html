@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Controle de Jornada</title>
+  <link rel="icon" type="image/png" href="clock.png">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -90,6 +91,27 @@
       font-weight: bold;
       text-align: center;
     }
+
+    span[title] {
+      cursor: help;
+      color: #00bfff;
+      font-weight: bold;
+    }
+
+    .info-circle {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      border-radius: 50%;
+      background-color: white;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: help;
+    }
+
   </style>
 </head>
 <body>
@@ -164,11 +186,12 @@
       // Inconsistências
       const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
       const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
+      const inconsistenciaFimJornada = (agoraMin > saidaLimite ? "Sim" : "Não")
 
-      //Cores para Inconsistencias
+      //Regra de cores
       const corInicio = inconsistenciaInicioIntervalo === "Sim" ? "red" : "none";
       const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
-
+      const corFimJornada = inconsistenciaFimJornada === "Sim" ? "red" : "none";
       const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
 
       resultado.innerHTML = `
@@ -180,12 +203,14 @@
         ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>`: `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
 
         <hr>
-        <p><b>Inconsistência de Início Intervalo:</b> 
-        <span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
-        <p><b>Inconsistência de Intervalo:</b> 
-        <span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
+        <p><b><span class="info-circle" title="O Intervalo não pode iniciar com menos de 3h de Jornada">i</span> Inconsistência de Início Intervalo:</b><span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
+        <p><b><span class="info-circle" title="O Intervalo não pode ser maior que 3h">i</span> Inconsistência de Intervalo:</b><span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
+        <p><b><span class="info-circle" title="Hora Extra acima de 1h12">i</span> Inconsistência Fim de Jornada:</b><span style="color:${corFimJornada}">${inconsistenciaFimJornada}</span></p>
+        
       `;
     }
+
+
   </script>
 </body>
 </html>
