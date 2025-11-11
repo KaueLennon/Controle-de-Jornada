@@ -149,6 +149,8 @@
       const almocoFim = document.getElementById("almocoFim").value;
       const resultado = document.getElementById("resultado");
 
+
+      
       if (!entrada || !almocoInicio || !almocoFim) {
         resultado.innerHTML = "<p class='error'>Preencha todos os campos!</p>";
         return;
@@ -193,6 +195,11 @@
       const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
       const corFimJornada = inconsistenciaFimJornada === "Sim" ? "red" : "none";
       const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
+      
+      if (almocoInicioMin < entradaMin || almocoFimMin < almocoInicioMin) {
+      resultado.innerHTML = "<p class='error'>Horários Divergentes</p>";
+      return;
+      }
 
       resultado.innerHTML = `
         <p><b>Intervalo Real:</b> ${Converter_Para_Hora(intervaloReal)}</p>
