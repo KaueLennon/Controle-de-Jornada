@@ -37,7 +37,7 @@
       color: #ddd;
     }
 
-    input[type="time"] {
+    input {
       width: 100%;
       padding: 12px;
       border: 1px solid #444;
@@ -49,7 +49,7 @@
       transition: 0.3s;
     }
 
-    input[type="time"]:focus {
+    input:focus {
       outline: none;
       border-color: #00bfff;
       box-shadow: 0 0 5px #00bfff;
@@ -75,7 +75,6 @@
 
     .result {
       margin-top: 25px;
-      background-color: rgba(0, 0, 0, 0.0);
       border-radius: 10px;
       padding: 5px;
       text-align: left;
@@ -92,12 +91,6 @@
       text-align: center;
     }
 
-    span[title] {
-      cursor: help;
-      color: #00bfff;
-      font-weight: bold;
-    }
-
     .info-circle {
       display: inline-block;
       width: 18px;
@@ -106,24 +99,27 @@
       text-align: center;
       border-radius: 50%;
       background-color: white;
-      color: white;
+      color: black;
       font-weight: bold;
       font-size: 12px;
       cursor: help;
     }
-
   </style>
 </head>
 <body>
   <div class="tela-hora">
     <h1>Controle Jornada</h1>
-    <label for="entrada">Horário de Entrada</label>
+
+    <label>Colar horários (opcional)</label>
+    <input type="text" id="colagem" placeholder="Ex: 07:53  11:21  13:10">
+
+    <label>Horário de Entrada</label>
     <input type="time" id="entrada">
 
-    <label for="almocoInicio">Início do Almoço</label>
+    <label>Início do Almoço</label>
     <input type="time" id="almocoInicio">
 
-    <label for="almocoFim">Fim do Almoço</label>
+    <label>Fim do Almoço</label>
     <input type="time" id="almocoFim">
 
     <button onclick="calcular()">Calcular</button>
@@ -143,62 +139,76 @@
       return `${h}:${m.toString().padStart(2, "0")}`;
     }
 
+    // 🔥 Função reutilizável para preencher campos
+    function preencherCampos(texto) {
+      const partes = texto.split(/[\s,]+/);
+
+      if (partes.length >= 3) {
+        document.getElementById("entrada").value = partes[0];
+        document.getElementById("almocoInicio").value = partes[1];
+        document.getElementById("almocoFim").value = partes[2];
+      }
+    }
+
+    // Colar no campo específico
+    document.getElementById("colagem").addEventListener("paste", function(e) {
+      setTimeout(() => preencherCampos(e.target.value), 10);
+    });
+
+    // 🔥 Colar em qualquer input
+    document.querySelectorAll("input").forEach(input => {
+      input.addEventListener("paste", function(e) {
+        const texto = (e.clipboardData || window.clipboardData).getData("text");
+
+        // Se detectar múltiplos horários
+        if (texto.match(/\d{2}:\d{2}.*\d{2}:\d{2}/)) {
+          e.preventDefault();
+          preencherCampos(texto);
+        }
+      });
+    });
+
     function calcular() {
       const entrada = document.getElementById("entrada").value;
       const almocoInicio = document.getElementById("almocoInicio").value;
       const almocoFim = document.getElementById("almocoFim").value;
       const resultado = document.getElementById("resultado");
 
-
-      
       if (!entrada || !almocoInicio || !almocoFim) {
         resultado.innerHTML = "<p class='error'>Preencha todos os campos!</p>";
         return;
       }
 
+      const entradaMin = Converter_Para_Minutos(entrada);
+      const almocoInicioMin = Converter_Para_Minutos(almocoInicio);
+      const almocoFimMin = Converter_Para_Minutos(almocoFim);
 
-      //Comentários para simular a Jornada//
-            
-      const entradaMin = Converter_Para_Minutos(entrada); //recebe 08:00
-      const almocoInicioMin = Converter_Para_Minutos(almocoInicio); // recebe 11:30
-      const almocoFimMin = Converter_Para_Minutos(almocoFim); // recebe 12:00
+      const intervaloReal = almocoFimMin - almocoInicioMin;
 
-      // Intervalo Real
-      const intervaloReal = almocoFimMin - almocoInicioMin; //resultado de 30 minutos
-
-      // HE Intervalo
       let heIntervalo = 0;
       if (intervaloReal < 60) {
-        heIntervalo = 60 - intervaloReal; //60 - 30 = 30 minutos que gerou de HE
+        heIntervalo = 60 - intervaloReal;
       }
 
-      
-      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin; //588 - (60 -30) + 510 = 1068    --> 588 representa 09h48 em minutos
+      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin;
+      const saidaLimite = saidaPlanejada + 72;
 
-      
-      const saidaLimite = saidaPlanejada + 72; // 72 representa os minutos de 1h12
-
-      
       const agora = new Date();
       const agoraMin = agora.getHours() * 60 + agora.getMinutes();
       let tempoSaida = saidaPlanejada - agoraMin;
 
-
-
-      // Inconsistências
       const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
       const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
-      const inconsistenciaFimJornada = (agoraMin > saidaLimite ? "Sim" : "Não")
+      const inconsistenciaFimJornada = (agoraMin > saidaLimite ? "Sim" : "Não");
 
-      //Regra de cores
       const corInicio = inconsistenciaInicioIntervalo === "Sim" ? "red" : "none";
       const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
       const corFimJornada = inconsistenciaFimJornada === "Sim" ? "red" : "none";
       const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
-      
+
       if (almocoInicioMin < entradaMin || almocoFimMin < almocoInicioMin) {
-      resultado.innerHTML = "<p class='error'>Horários Divergentes</p>";
-      return;
+        resultado.innerHTML = "<p class='error'>Horários Divergentes</p>";
+        return;
       }
 
       resultado.innerHTML = `
@@ -207,18 +217,15 @@
         <p><b>Saída Planejada:</b> ${Converter_Para_Hora(saidaPlanejada)}</p>
         <p><b>Saída Limite:</b> ${Converter_Para_Hora(saidaLimite)}</p>
         ${tempoSaida >= 0 
-        ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>`: `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
+        ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>` 
+        : `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
 
         <hr>
         <p><b><span class="info-circle" title="O Intervalo não pode iniciar com menos de 3h de Jornada">i</span> Inconsistência de Início Intervalo: </b><span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
         <p><b><span class="info-circle" title="O Intervalo não pode ser maior que 3h">i</span> Inconsistência de Intervalo: </b><span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
         <p><b><span class="info-circle" title="Hora Extra acima de 1h12">i</span> Inconsistência Fim de Jornada: </b><span style="color:${corFimJornada}">${inconsistenciaFimJornada}</span></p>
-        
       `;
     }
-
-
   </script>
 </body>
 </html>
-
