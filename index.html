@@ -193,6 +193,85 @@
     .link:hover { color: white; background-color: rgba(255, 255, 255, 0.1); }
     .link[aria-pressed="true"] { color: deepskyblue; background-color: rgba(0, 191, 255, 0.12); }
 
+    /* ---------- Seletor de modo ---------- */
+    .modos {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 99px;
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .modos button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 99px;
+      background: none;
+      color: #aaa;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .modos button:hover { color: white; }
+    .modos button[aria-pressed="true"] { background-color: dodgerblue; color: white; }
+
+    /* ---------- Modo clássico (código original) ---------- */
+    .so-classico { display: none; }
+    body.modo-classico .so-classico { display: block; }
+    body.modo-classico .so-novo { display: none !important; }
+    body.modo-classico h1 { margin-bottom: 30px; }
+
+    .botao {
+      background-color: dodgerblue;
+      border: none;
+      padding: 15px;
+      width: 100%;
+      border-radius: 10px;
+      color: white;
+      font-size: 15px;
+      margin-top: 25px;
+      transition: 0.3s;
+    }
+
+    .botao:hover {
+      background-color: deepskyblue;
+      cursor: pointer;
+      transform: scale(1.03);
+    }
+
+    .result {
+      margin-top: 25px;
+      border-radius: 10px;
+      padding: 5px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .result p {
+      margin: 6px 0;
+    }
+
+    .error {
+      color: #ff4444;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .info-circle {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      border-radius: 50%;
+      background-color: white;
+      color: black;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: help;
+    }
+
     /* ---------- Resumo ---------- */
     .resumo {
       display: grid;
@@ -494,8 +573,13 @@
   <main class="grade">
     <!-- Cartão original -->
     <div class="tela-hora" id="cartaoForm">
+      <div class="modos" role="group" aria-label="Modo de exibição">
+        <button id="modoNovo" aria-pressed="true">✨ Novo</button>
+        <button id="modoClassico" aria-pressed="false">📋 Clássico</button>
+      </div>
+
       <h1>Controle Jornada</h1>
-      <div class="relogio" id="relogio"></div>
+      <div class="relogio so-novo" id="relogio"></div>
 
       <label for="colagem">Colar horários (opcional)</label>
       <input type="text" id="colagem" placeholder="Ex: 07:53  11:21  13:10" autocomplete="off">
@@ -509,17 +593,20 @@
       <label for="almocoFim">Fim do Almoço</label>
       <input type="time" id="almocoFim">
 
-      <p class="dica">⚡ O cálculo é feito automaticamente ao preencher os horários.</p>
-      <div class="erro" id="erro" role="alert"></div>
+      <button class="botao so-classico" onclick="calcularClassico()">Calcular</button>
+      <div class="result so-classico" id="resultadoClassico"></div>
 
-      <div class="acoes">
+      <p class="dica so-novo">⚡ O cálculo é feito automaticamente ao preencher os horários.</p>
+      <div class="erro so-novo" id="erro" role="alert"></div>
+
+      <div class="acoes so-novo">
         <button class="link" id="botaoAvisar" aria-pressed="false" title="Mostra um aviso (e notificação, se permitido) na hora de sair">🔔 Me avise</button>
         <button class="link" id="botaoLimpar">↺ Limpar</button>
       </div>
     </div>
 
     <!-- Cartão de informações (aparece após calcular) -->
-    <section class="cartao-resultado" id="painel" aria-live="polite" hidden>
+    <section class="cartao-resultado so-novo" id="painel" aria-live="polite" hidden>
       <div class="resumo">
         <div class="anel surgir" id="anel">
           <svg viewBox="0 0 200 200" aria-hidden="true">
@@ -611,6 +698,7 @@
     const $ = id => document.getElementById(id);
     const semMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    let modo = "novo"; // a tela sempre abre no modo novo
     let jornada = null;
     let ultimoTempoSaida = null;
     let ultimoTempoLimite = null;
@@ -655,7 +743,7 @@
         if (horarios[i]) $(id).value = horarios[i];
       });
 
-      if (horarios.length >= 3) calcular();
+      if (horarios.length >= 3 && modo === "novo") calcular();
     }
 
     // Digitar/colar no campo específico
@@ -675,14 +763,15 @@
       });
 
       input.addEventListener("keydown", e => {
-        if (e.key === "Enter") calcular();
+        if (e.key === "Enter") modo === "novo" ? calcular() : calcularClassico();
       });
     });
 
     // Calcula sozinho ao alterar um horário; se algum for apagado, esconde o resultado
     ["entrada", "almocoInicio", "almocoFim"].forEach(id => {
       $(id).addEventListener("change", () => {
-        if ($("entrada").value && $("almocoInicio").value && $("almocoFim").value) {
+        if (modo !== "novo") return;
+        if (todosPreenchidos()) {
           calcular();
         } else {
           $("erro").classList.remove("ativo");
@@ -690,6 +779,92 @@
         }
       });
     });
+
+    function todosPreenchidos() {
+      return $("entrada").value && $("almocoInicio").value && $("almocoFim").value;
+    }
+
+    // ---------- Troca de modo ----------
+    function definirModo(novoModo) {
+      if (novoModo === modo) return;
+      modo = novoModo;
+
+      document.body.classList.toggle("modo-classico", modo === "classico");
+      $("modoNovo").setAttribute("aria-pressed", modo === "novo");
+      $("modoClassico").setAttribute("aria-pressed", modo === "classico");
+
+      if (modo === "classico") {
+        $("erro").classList.remove("ativo");
+        esconderPainel();
+        $("resultadoClassico").innerHTML = "";
+        if (todosPreenchidos()) calcularClassico();
+      } else if (todosPreenchidos()) {
+        calcular();
+      }
+    }
+
+    $("modoNovo").addEventListener("click", () => definirModo("novo"));
+    $("modoClassico").addEventListener("click", () => definirModo("classico"));
+
+    // ---------- Modo clássico: cálculo do código original ----------
+    function calcularClassico() {
+      const entrada = document.getElementById("entrada").value;
+      const almocoInicio = document.getElementById("almocoInicio").value;
+      const almocoFim = document.getElementById("almocoFim").value;
+      const resultado = document.getElementById("resultadoClassico");
+
+      if (!entrada || !almocoInicio || !almocoFim) {
+        resultado.innerHTML = "<p class='error'>Preencha todos os campos!</p>";
+        return;
+      }
+
+      const entradaMin = Converter_Para_Minutos(entrada);
+      const almocoInicioMin = Converter_Para_Minutos(almocoInicio);
+      const almocoFimMin = Converter_Para_Minutos(almocoFim);
+
+      const intervaloReal = almocoFimMin - almocoInicioMin;
+
+      let heIntervalo = 0;
+      if (intervaloReal < 60) {
+        heIntervalo = 60 - intervaloReal;
+      }
+
+      const saidaPlanejada = JORNADA_TOTAL - (60 - intervaloReal) + entradaMin;
+      const saidaLimite = saidaPlanejada + TOLERANCIA_HE;
+
+      const agora = new Date();
+      const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+      let tempoSaida = saidaPlanejada - agoraMin;
+
+      const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
+      const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
+      const inconsistenciaFimJornada = (agoraMin > saidaLimite ? "Sim" : "Não");
+
+      const corInicio = inconsistenciaInicioIntervalo === "Sim" ? "red" : "none";
+      const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
+      const corFimJornada = inconsistenciaFimJornada === "Sim" ? "red" : "none";
+      const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
+
+      if (almocoInicioMin < entradaMin || almocoFimMin < almocoInicioMin) {
+        resultado.innerHTML = "<p class='error'>Horários Divergentes</p>";
+        return;
+      }
+
+      resultado.innerHTML = `
+        <p><b>Intervalo Real:</b> ${Converter_Para_Hora(intervaloReal)}</p>
+        <p><b>HE Intervalo:</b> ${Converter_Para_Hora(heIntervalo)}</p>
+        <p><b>Saída Planejada:</b> ${Converter_Para_Hora(saidaPlanejada)}</p>
+        <p><b>Saída Limite:</b> ${Converter_Para_Hora(saidaLimite)}</p>
+        ${tempoSaida >= 0
+        ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>`
+        : `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
+
+        <hr>
+        <p><b><span class="info-circle" title="O Intervalo não pode iniciar com menos de 3h de Jornada">i</span> Inconsistência de Início Intervalo: </b><span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
+        <p><b><span class="info-circle" title="O Intervalo não pode ser maior que 3h">i</span> Inconsistência de Intervalo: </b><span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
+        <p><b><span class="info-circle" title="Hora Extra acima de 1h12">i</span> Inconsistência Fim de Jornada: </b><span style="color:${corFimJornada}">${inconsistenciaFimJornada}</span></p>
+      `;
+    }
 
     function mostrarErro(mensagem) {
       const erro = $("erro");
