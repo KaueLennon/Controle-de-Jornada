@@ -2,31 +2,128 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Controle de Jornada</title>
   <link rel="icon" type="image/png" href="clock.png">
   <style>
+    :root {
+      --card: rgba(0, 0, 0, 0.85);
+      --card-borda: rgba(255, 255, 255, 0.1);
+      --texto: #ffffff;
+      --suave: #a9b1c4;
+      --azul: #2869EB;
+      --ciano: #22d3ee;
+      --violeta: #a78bfa;
+      --verde: #34d399;
+      --ambar: #fbbf24;
+      --vermelho: #fb7185;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background-image: linear-gradient(45deg, cyan, #2869EB);
-      height: 100vh;
+      background-attachment: fixed;
+      min-height: 100vh;
       margin: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: var(--texto);
+      overflow-x: hidden;
+    }
+
+    /* ---------- Tons de fundo por situação (só aparecem quando necessário) ---------- */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .aurora span {
+      position: absolute;
+      width: 60vmax;
+      height: 60vmax;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0;
+      transition: opacity 2s ease, background 2s ease;
+      animation: flutuar 24s ease-in-out infinite alternate;
+    }
+
+    .aurora span:nth-child(1) { top: -22vmax; left: -18vmax; background: var(--violeta); }
+    .aurora span:nth-child(2) { bottom: -25vmax; right: -18vmax; background: var(--ambar); animation-delay: -8s; }
+    .aurora span:nth-child(3) { top: 30%; left: 35%; width: 35vmax; height: 35vmax; background: var(--ambar); animation-delay: -16s; }
+
+    body[data-fase="intervalo"] .aurora span:nth-child(1) { opacity: 0.5; }
+    body[data-fase="extra"] .aurora span:nth-child(2) { opacity: 0.65; }
+    body[data-fase="extra"] .aurora span:nth-child(3) { opacity: 0.3; }
+    body[data-fase="excedido"] .aurora span:nth-child(2),
+    body[data-fase="excedido"] .aurora span:nth-child(3) { background: #e11d48; opacity: 0.6; }
+
+    @keyframes flutuar {
+      to { transform: translate(8vmax, 6vmax) scale(1.15); }
+    }
+
+    /* ---------- Estrutura ---------- */
+    .grade {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 24px;
+      width: 100%;
+      max-width: 1160px;
+      padding: 24px 16px;
+      box-sizing: border-box;
     }
 
     .tela-hora {
-      background-color: rgba(0, 0, 0, 0.85);
+      background-color: var(--card);
       padding: 50px 60px;
       border-radius: 15px;
       color: white;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
       width: 340px;
       text-align: center;
     }
 
+    .cartao-resultado {
+      flex: 1 1 480px;
+      max-width: 620px;
+      padding: 40px;
+      box-sizing: border-box;
+      background-color: var(--card);
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      animation: surgirLado 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    @keyframes surgirLado {
+      from { opacity: 0; transform: translateX(30px); }
+    }
+
+    @media (max-width: 520px) {
+      .tela-hora { width: 100%; padding: 32px 24px; box-sizing: border-box; }
+      .tela-hora input { box-sizing: border-box; }
+      .cartao-resultado { padding: 24px 20px; }
+    }
+
+    /* ---------- Formulário (igual ao original) ---------- */
     h1 {
-      margin-bottom: 30px;
+      margin-bottom: 6px;
+    }
+
+    .relogio {
+      margin-bottom: 26px;
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    .relogio b {
+      color: white;
+      font-variant-numeric: tabular-nums;
     }
 
     label {
@@ -45,7 +142,7 @@
       background-color: #fff;
       color: #000;
       font-size: 15px;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
       transition: 0.3s;
     }
 
@@ -55,79 +152,474 @@
       box-shadow: 0 0 5px #00bfff;
     }
 
-    button {
-      background-color: dodgerblue;
+    .dica {
+      margin: 22px 0 0;
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    .erro {
+      display: none;
+      margin-top: 20px;
+      color: #ff4444;
+      font-weight: bold;
+    }
+
+    .erro.ativo { display: block; animation: tremer 0.45s; }
+
+    @keyframes tremer {
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+
+    .acoes {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+    }
+
+    .link {
+      padding: 6px 10px;
       border: none;
-      padding: 15px;
-      width: 100%;
-      border-radius: 10px;
-      color: white;
-      font-size: 15px;
-      margin-top: 25px;
+      border-radius: 8px;
+      background: none;
+      color: #aaa;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
       transition: 0.3s;
     }
 
-    button:hover {
-      background-color: deepskyblue;
-      cursor: pointer;
-      transform: scale(1.03);
+    .link:hover { color: white; background-color: rgba(255, 255, 255, 0.1); }
+    .link[aria-pressed="true"] { color: deepskyblue; background-color: rgba(0, 191, 255, 0.12); }
+
+    /* ---------- Resumo ---------- */
+    .resumo {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 28px;
+      align-items: center;
     }
 
-    .result {
-      margin-top: 25px;
-      border-radius: 10px;
-      padding: 5px;
-      text-align: left;
-      font-size: 14px;
+    @media (max-width: 560px) {
+      .resumo { grid-template-columns: 1fr; justify-items: center; text-align: center; }
     }
 
-    .result p {
-      margin: 6px 0;
+    .anel { position: relative; width: 200px; height: 200px; }
+    .anel svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .anel circle { fill: none; stroke-width: 12; }
+    .anel .trilho { stroke: rgba(255, 255, 255, 0.08); }
+
+    .anel .progresso {
+      stroke: url(#gNormal);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease;
+      filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.55));
     }
 
-    .error {
-      color: #ff4444;
+    .anel[data-fase="intervalo"] .progresso { stroke: url(#gIntervalo); filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.55)); }
+    .anel[data-fase="extra"] .progresso { stroke: url(#gExtra); filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.55)); }
+    .anel[data-fase="excedido"] .progresso { stroke: url(#gExcedido); filter: drop-shadow(0 0 10px rgba(251, 113, 133, 0.7)); }
+    .anel[data-fase="excedido"] { animation: pulsar 1.6s ease-in-out infinite; }
+    .anel[data-fase="extra"] { cursor: pointer; }
+
+    @keyframes pulsar { 50% { transform: scale(1.03); } }
+
+    .anel-centro {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .anel-centro strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+    .anel-centro small { color: var(--suave); font-size: 12px; }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 10px;
       font-weight: bold;
-      text-align: center;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ciano);
+      background: rgba(34, 211, 238, 0.12);
     }
 
-    .info-circle {
-      display: inline-block;
-      width: 18px;
-      height: 18px;
-      line-height: 18px;
-      text-align: center;
+    .chip::before {
+      content: "";
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background-color: white;
-      color: black;
+      background: currentColor;
+      animation: piscar 1.4s ease-in-out infinite;
+    }
+
+    @keyframes piscar { 50% { opacity: 0.25; } }
+
+    .chip[data-fase="antes"] { color: var(--suave); background: rgba(255, 255, 255, 0.08); }
+    .chip[data-fase="intervalo"] { color: var(--violeta); background: rgba(167, 139, 250, 0.14); }
+    .chip[data-fase="extra"] { color: var(--ambar); background: rgba(251, 191, 36, 0.14); }
+    .chip[data-fase="excedido"] { color: var(--vermelho); background: rgba(251, 113, 133, 0.16); }
+
+    .destaque .rotulo { color: var(--suave); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .destaque .saida {
+      font-size: 60px;
       font-weight: bold;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(120deg, #fff 30%, var(--ciano));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .destaque p { margin: 8px 0 16px; font-size: 14px; line-height: 1.5; }
+
+    .barra-pct { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+
+    .barra-pct span {
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background-image: linear-gradient(90deg, cyan, #2869EB);
+      transition: width 1s ease;
+    }
+
+    .pct-legenda { margin-top: 8px; color: var(--suave); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    @media (max-width: 420px) { .tiles { grid-template-columns: 1fr; } }
+
+    .tile {
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-borda);
+      transition: transform 0.25s, border-color 0.25s;
+    }
+
+    .tile:hover { transform: translateY(-3px); border-color: rgba(0, 191, 255, 0.5); }
+    .tile span { display: block; color: var(--suave); font-size: 12px; }
+    .tile strong { display: block; margin: 6px 0 2px; font-size: 22px; font-variant-numeric: tabular-nums; }
+    .tile small { color: #7d869b; font-size: 11px; }
+
+    .secao-titulo {
+      margin: 30px 0 14px;
       font-size: 12px;
-      cursor: help;
+      color: var(--suave);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* ---------- Linha do tempo ---------- */
+    .lt { position: relative; padding-top: 30px; }
+    .lt-barra { position: relative; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); }
+    .lt-seg { position: absolute; top: 0; height: 100%; }
+    .lt-seg.trabalho { background-image: linear-gradient(90deg, cyan, #2869EB); }
+    .lt-seg.primeiro { border-radius: 99px 0 0 99px; }
+    .lt-seg.intervalo { background: repeating-linear-gradient(-45deg, rgba(167, 139, 250, 0.9) 0 4px, rgba(167, 139, 250, 0.45) 4px 8px); }
+    .lt-seg.tolerancia { background: linear-gradient(90deg, var(--ambar), var(--vermelho)); border-radius: 0 99px 99px 0; }
+
+    .lt-futuro {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      border-radius: 0 99px 99px 0;
+      background: rgba(0, 0, 0, 0.6);
+      transition: left 1s linear;
+    }
+
+    .lt-tick { position: absolute; top: -3px; width: 2px; height: 18px; border-radius: 2px; background: rgba(255, 255, 255, 0.55); transform: translateX(-1px); }
+
+    .lt-agora {
+      position: absolute;
+      top: -26px;
+      bottom: -6px;
+      width: 2px;
+      background: #fff;
+      transform: translateX(-1px);
+      box-shadow: 0 0 10px #fff;
+      transition: left 1s linear;
+    }
+
+    .lt-agora span {
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+      color: #000;
+      background: #fff;
+    }
+
+    .lt-agora.borda-esq span { transform: translate(-8px, -100%); }
+    .lt-agora.borda-dir span { transform: translate(calc(-100% + 8px), -100%); }
+
+    .lt-marcos { position: relative; height: 46px; margin-top: 8px; }
+
+    .lt-marco {
+      position: absolute;
+      top: 4px;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--suave);
+      white-space: nowrap;
+    }
+
+    .lt-marco b { color: #fff; font-variant-numeric: tabular-nums; }
+    .lt-marco.linha2 { top: 24px; }
+    .lt-marco.esq { transform: none; }
+    .lt-marco.dir { transform: translateX(-100%); }
+
+    /* ---------- Inconsistências ---------- */
+    .regras { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+    .regra {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-borda);
+      transition: background 0.4s, border-color 0.4s;
+    }
+
+    .regra .ico {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: bold;
+      font-size: 16px;
+      color: var(--verde);
+      background: rgba(52, 211, 153, 0.14);
+    }
+
+    .regra strong { display: block; font-size: 14px; }
+    .regra small { display: block; margin-top: 2px; color: var(--suave); font-size: 12px; line-height: 1.4; }
+
+    .selo {
+      padding: 5px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+      color: var(--verde);
+      background: rgba(52, 211, 153, 0.12);
+    }
+
+    .regra.alerta { border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.07); }
+    .regra.alerta .ico, .regra.alerta .selo { color: var(--ambar); background: rgba(251, 191, 36, 0.14); }
+    .regra.falha { border-color: rgba(251, 113, 133, 0.5); background: rgba(251, 113, 133, 0.09); }
+    .regra.falha .ico, .regra.falha .selo { color: var(--vermelho); background: rgba(251, 113, 133, 0.16); }
+
+    @media (max-width: 480px) {
+      .regra { grid-template-columns: 34px 1fr; }
+      .regra .selo { grid-column: 2; justify-self: start; }
+    }
+
+    .regras-rodape {
+      margin: 22px 0 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--card-borda);
+      color: var(--suave);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* ---------- Entrada animada ---------- */
+    .surgir { animation: surgir 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+
+    @keyframes surgir {
+      from { opacity: 0; transform: translateY(14px); }
+    }
+
+    /* ---------- Toast e confete ---------- */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      z-index: 20;
+      max-width: calc(100% - 32px);
+      box-sizing: border-box;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.9);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 140%);
+      transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, visibility 0.5s;
+    }
+
+    .toast.ativo { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+
+    #confete { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
-  <div class="tela-hora">
-    <h1>Controle Jornada</h1>
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+  <canvas id="confete" aria-hidden="true"></canvas>
 
-    <label>Colar horários (opcional)</label>
-    <input type="text" id="colagem" placeholder="Ex: 07:53  11:21  13:10">
+  <main class="grade">
+    <!-- Cartão original -->
+    <div class="tela-hora" id="cartaoForm">
+      <h1>Controle Jornada</h1>
+      <div class="relogio" id="relogio"></div>
 
-    <label>Horário de Entrada</label>
-    <input type="time" id="entrada">
+      <label for="colagem">Colar horários (opcional)</label>
+      <input type="text" id="colagem" placeholder="Ex: 07:53  11:21  13:10" autocomplete="off">
 
-    <label>Início do Almoço</label>
-    <input type="time" id="almocoInicio">
+      <label for="entrada">Horário de Entrada</label>
+      <input type="time" id="entrada">
 
-    <label>Fim do Almoço</label>
-    <input type="time" id="almocoFim">
+      <label for="almocoInicio">Início do Almoço</label>
+      <input type="time" id="almocoInicio">
 
-    <button onclick="calcular()">Calcular</button>
+      <label for="almocoFim">Fim do Almoço</label>
+      <input type="time" id="almocoFim">
 
-    <div class="result" id="resultado"></div>
-  </div>
+      <p class="dica">⚡ O cálculo é feito automaticamente ao preencher os horários.</p>
+      <div class="erro" id="erro" role="alert"></div>
+
+      <div class="acoes">
+        <button class="link" id="botaoAvisar" aria-pressed="false" title="Mostra um aviso (e notificação, se permitido) na hora de sair">🔔 Me avise</button>
+        <button class="link" id="botaoLimpar">↺ Limpar</button>
+      </div>
+    </div>
+
+    <!-- Cartão de informações (aparece após calcular) -->
+    <section class="cartao-resultado" id="painel" aria-live="polite" hidden>
+      <div class="resumo">
+        <div class="anel surgir" id="anel">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <linearGradient id="gNormal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00ffff"/><stop offset="1" stop-color="#2869EB"/></linearGradient>
+              <linearGradient id="gIntervalo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+              <linearGradient id="gExtra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+              <linearGradient id="gExcedido" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fda4af"/><stop offset="1" stop-color="#e11d48"/></linearGradient>
+            </defs>
+            <circle class="trilho" cx="100" cy="100" r="86"/>
+            <circle class="progresso" id="anelProgresso" cx="100" cy="100" r="86"/>
+          </svg>
+          <div class="anel-centro">
+            <span class="chip" id="fase">Trabalhando</span>
+            <strong id="contagem">00:00:00</strong>
+            <small id="contagemLegenda">para a saída</small>
+          </div>
+        </div>
+
+        <div class="destaque surgir" style="--i:1">
+          <span class="rotulo">Saída planejada</span>
+          <div class="saida" id="saidaGrande">--:--</div>
+          <p id="mensagem"></p>
+          <div class="barra-pct"><span id="barraPct"></span></div>
+          <div class="pct-legenda" id="pctLegenda"></div>
+        </div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile surgir" style="--i:2">
+          <span>Intervalo real</span>
+          <strong id="tIntervalo">--:--</strong>
+          <small>Mínimo de 30min</small>
+        </div>
+        <div class="tile surgir" style="--i:3">
+          <span>Saída planejada</span>
+          <strong id="tSaida">--:--</strong>
+          <small>Fim da jornada</small>
+        </div>
+        <div class="tile surgir" style="--i:4">
+          <span>Saída limite</span>
+          <strong id="tLimite">--:--</strong>
+          <small>+1h12 de tolerância</small>
+        </div>
+      </div>
+
+      <h3 class="secao-titulo">Linha do tempo</h3>
+      <div class="lt surgir" style="--i:6">
+        <div class="lt-barra" id="ltBarra"></div>
+        <div class="lt-marcos" id="ltMarcos"></div>
+      </div>
+
+      <h3 class="secao-titulo">Inconsistências</h3>
+      <ul class="regras">
+        <li class="regra surgir" style="--i:7" id="regraInicio">
+          <span class="ico">✓</span>
+          <div><strong>Início do intervalo</strong><small>O intervalo não pode iniciar com menos de 3h de jornada</small></div>
+          <span class="selo">OK</span>
+        </li>
+        <li class="regra surgir" style="--i:8" id="regraIntervalo">
+          <span class="ico">✓</span>
+          <div><strong>Duração do intervalo</strong><small>O intervalo deve ter entre 30min e 3h</small></div>
+          <span class="selo">OK</span>
+        </li>
+        <li class="regra surgir" style="--i:9" id="regraFim">
+          <span class="ico">✓</span>
+          <div><strong>Fim de jornada</strong><small>Hora extra não pode passar de 1h12</small></div>
+          <span class="selo">OK</span>
+        </li>
+      </ul>
+
+      <p class="regras-rodape">
+        Jornada de <b>8h48</b> + intervalo de <b>1h</b>. Intervalo menor que 1h antecipa a saída.
+        Tolerância de <b>1h12</b> de hora extra até a saída limite.
+      </p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
 
   <script>
+    const JORNADA_TOTAL = 588;  // 9h48: 8h48 de trabalho + 1h de intervalo
+    const TOLERANCIA_HE = 72;   // 1h12 de hora extra permitida
+    const AVISO_LIMITE = 10;    // minutos antes da saída limite para avisar
+    const VALIDADE_APOS_LIMITE = 120; // horários salvos são apagados 2h após a saída limite
+    const CHAVE = "controle-jornada";
+    const CIRCUNFERENCIA = 2 * Math.PI * 86;
+
+    const $ = id => document.getElementById(id);
+    const semMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let jornada = null;
+    let ultimoTempoSaida = null;
+    let ultimoTempoLimite = null;
+    let avisarAtivo = false;
+    let audio = null;
+
+    $("anelProgresso").style.strokeDasharray = CIRCUNFERENCIA;
+    $("anelProgresso").style.strokeDashoffset = CIRCUNFERENCIA;
+
     function Converter_Para_Minutos(timeStr) {
       const [h, m] = timeStr.split(":").map(Number);
       return h * 60 + m;
@@ -139,21 +631,35 @@
       return `${h}:${m.toString().padStart(2, "0")}`;
     }
 
-    // 🔥 Função reutilizável para preencher campos
-    function preencherCampos(texto) {
-      const partes = texto.split(/[\s,]+/);
-
-      if (partes.length >= 3) {
-        document.getElementById("entrada").value = partes[0];
-        document.getElementById("almocoInicio").value = partes[1];
-        document.getElementById("almocoFim").value = partes[2];
-      }
+    function Converter_Segundos_Para_Hora(segundos) {
+      const s = Math.abs(segundos);
+      const h = Math.floor(s / 3600).toString().padStart(2, "0");
+      const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
+      return `${h}:${m}:${(s % 60).toString().padStart(2, "0")}`;
     }
 
-    // Colar no campo específico
-    document.getElementById("colagem").addEventListener("paste", function(e) {
-      setTimeout(() => preencherCampos(e.target.value), 10);
-    });
+    function Formatar_Duracao(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      if (h && m) return `${h}h${m.toString().padStart(2, "0")}`;
+      return h ? `${h}h` : `${m}min`;
+    }
+
+    // 🔥 Função reutilizável para preencher campos
+    function preencherCampos(texto) {
+      const horarios = (texto.match(/\b\d{1,2}:\d{2}\b/g) || []).map(h => h.padStart(5, "0"));
+
+      if (horarios.length < 2) return;
+
+      ["entrada", "almocoInicio", "almocoFim"].forEach((id, i) => {
+        if (horarios[i]) $(id).value = horarios[i];
+      });
+
+      if (horarios.length >= 3) calcular();
+    }
+
+    // Digitar/colar no campo específico
+    $("colagem").addEventListener("input", e => preencherCampos(e.target.value));
 
     // 🔥 Colar em qualquer input
     document.querySelectorAll("input").forEach(input => {
@@ -161,21 +667,46 @@
         const texto = (e.clipboardData || window.clipboardData).getData("text");
 
         // Se detectar múltiplos horários
-        if (texto.match(/\d{2}:\d{2}.*\d{2}:\d{2}/)) {
+        if (texto.match(/\d{1,2}:\d{2}.*\d{1,2}:\d{2}/s)) {
           e.preventDefault();
+          $("colagem").value = texto.trim().replace(/\s+/g, "  ");
           preencherCampos(texto);
+        }
+      });
+
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") calcular();
+      });
+    });
+
+    // Calcula sozinho ao alterar um horário; se algum for apagado, esconde o resultado
+    ["entrada", "almocoInicio", "almocoFim"].forEach(id => {
+      $(id).addEventListener("change", () => {
+        if ($("entrada").value && $("almocoInicio").value && $("almocoFim").value) {
+          calcular();
+        } else {
+          $("erro").classList.remove("ativo");
+          esconderPainel();
         }
       });
     });
 
+    function mostrarErro(mensagem) {
+      const erro = $("erro");
+      erro.textContent = mensagem;
+      erro.classList.remove("ativo");
+      void erro.offsetWidth; // reinicia a animação
+      erro.classList.add("ativo");
+      esconderPainel();
+    }
+
     function calcular() {
-      const entrada = document.getElementById("entrada").value;
-      const almocoInicio = document.getElementById("almocoInicio").value;
-      const almocoFim = document.getElementById("almocoFim").value;
-      const resultado = document.getElementById("resultado");
+      const entrada = $("entrada").value;
+      const almocoInicio = $("almocoInicio").value;
+      const almocoFim = $("almocoFim").value;
 
       if (!entrada || !almocoInicio || !almocoFim) {
-        resultado.innerHTML = "<p class='error'>Preencha todos os campos!</p>";
+        mostrarErro("Preencha todos os campos!");
         return;
       }
 
@@ -183,49 +714,392 @@
       const almocoInicioMin = Converter_Para_Minutos(almocoInicio);
       const almocoFimMin = Converter_Para_Minutos(almocoFim);
 
-      const intervaloReal = almocoFimMin - almocoInicioMin;
-
-      let heIntervalo = 0;
-      if (intervaloReal < 60) {
-        heIntervalo = 60 - intervaloReal;
-      }
-
-      const saidaPlanejada = 588 - (60 - intervaloReal) + entradaMin;
-      const saidaLimite = saidaPlanejada + 72;
-
-      const agora = new Date();
-      const agoraMin = agora.getHours() * 60 + agora.getMinutes();
-      let tempoSaida = saidaPlanejada - agoraMin;
-
-      const inconsistenciaInicioIntervalo = (almocoInicioMin - entradaMin < 180) ? "Sim" : "Não";
-      const inconsistenciaIntervalo = (intervaloReal < 30 || intervaloReal > 180) ? "Sim" : "Não";
-      const inconsistenciaFimJornada = (agoraMin > saidaLimite ? "Sim" : "Não");
-
-      const corInicio = inconsistenciaInicioIntervalo === "Sim" ? "red" : "none";
-      const corIntervalo = inconsistenciaIntervalo === "Sim" ? "red" : "none";
-      const corFimJornada = inconsistenciaFimJornada === "Sim" ? "red" : "none";
-      const corHoraExtraVerdadeiro = agoraMin > saidaLimite ? "red" : "none";
-
       if (almocoInicioMin < entradaMin || almocoFimMin < almocoInicioMin) {
-        resultado.innerHTML = "<p class='error'>Horários Divergentes</p>";
+        mostrarErro("Horários Divergentes");
         return;
       }
 
-      resultado.innerHTML = `
-        <p><b>Intervalo Real:</b> ${Converter_Para_Hora(intervaloReal)}</p>
-        <p><b>HE Intervalo:</b> ${Converter_Para_Hora(heIntervalo)}</p>
-        <p><b>Saída Planejada:</b> ${Converter_Para_Hora(saidaPlanejada)}</p>
-        <p><b>Saída Limite:</b> ${Converter_Para_Hora(saidaLimite)}</p>
-        ${tempoSaida >= 0 
-        ? `<p><b>Tempo para Saída:</b> ${Converter_Para_Hora(tempoSaida)}</p>` 
-        : `<p><b>Tempo em Hora Extra:</b> <span style="color:${corHoraExtraVerdadeiro}">${Converter_Para_Hora(tempoSaida)}</span></p>`}
+      const intervaloReal = almocoFimMin - almocoInicioMin;
 
-        <hr>
-        <p><b><span class="info-circle" title="O Intervalo não pode iniciar com menos de 3h de Jornada">i</span> Inconsistência de Início Intervalo: </b><span style="color:${corInicio}">${inconsistenciaInicioIntervalo}</span></p>
-        <p><b><span class="info-circle" title="O Intervalo não pode ser maior que 3h">i</span> Inconsistência de Intervalo: </b><span style="color:${corIntervalo}">${inconsistenciaIntervalo}</span></p>
-        <p><b><span class="info-circle" title="Hora Extra acima de 1h12">i</span> Inconsistência Fim de Jornada: </b><span style="color:${corFimJornada}">${inconsistenciaFimJornada}</span></p>
-      `;
+      const saidaPlanejada = JORNADA_TOTAL - (60 - intervaloReal) + entradaMin;
+      const saidaLimite = saidaPlanejada + TOLERANCIA_HE;
+
+      const expiraEm = calcularValidade(saidaLimite);
+
+      jornada = { entradaMin, almocoInicioMin, almocoFimMin, intervaloReal, saidaPlanejada, saidaLimite, expiraEm };
+      ultimoTempoSaida = null;
+      ultimoTempoLimite = null;
+
+      $("erro").classList.remove("ativo");
+      salvar();
+      renderizarResultado();
+      atualizar();
     }
+
+    function renderizarResultado() {
+      const { entradaMin, almocoInicioMin, intervaloReal, saidaPlanejada, saidaLimite } = jornada;
+
+      $("saidaGrande").textContent = Converter_Para_Hora(saidaPlanejada);
+      $("tIntervalo").textContent = Converter_Para_Hora(intervaloReal);
+      $("tSaida").textContent = Converter_Para_Hora(saidaPlanejada);
+      $("tLimite").textContent = Converter_Para_Hora(saidaLimite);
+
+      const inconsistenciaInicioIntervalo = almocoInicioMin - entradaMin < 180;
+      const inconsistenciaIntervalo = intervaloReal < 30 || intervaloReal > 180;
+
+      definirRegra("regraInicio", inconsistenciaInicioIntervalo ? "falha" : "ok",
+        inconsistenciaInicioIntervalo ? `Iniciado com ${Formatar_Duracao(almocoInicioMin - entradaMin)}` : "OK");
+      definirRegra("regraIntervalo", inconsistenciaIntervalo ? "falha" : "ok",
+        inconsistenciaIntervalo ? `Intervalo de ${Formatar_Duracao(intervaloReal)}` : "OK");
+
+      renderizarLinhaTempo();
+
+      if ($("painel").hidden) mostrarPainel();
+    }
+
+    // Mostra o segundo cartão, deslizando o cartão original suavemente para o lado
+    function mostrarPainel() {
+      const painel = $("painel");
+      const form = $("cartaoForm");
+      const antes = form.getBoundingClientRect();
+
+      painel.hidden = false;
+      $("anelProgresso").style.strokeDashoffset = CIRCUNFERENCIA;
+      $("barraPct").style.width = "0";
+
+      // reinicia as animações de entrada
+      [painel, ...painel.querySelectorAll(".surgir")].forEach(el => {
+        el.style.animation = "none";
+        void el.offsetWidth;
+        el.style.animation = "";
+      });
+
+      const depois = form.getBoundingClientRect();
+      const dx = antes.left - depois.left;
+      const dy = antes.top - depois.top;
+      if ((dx || dy) && !semMovimento() && form.animate) {
+        form.animate(
+          [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+          { duration: 550, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+        );
+      }
+    }
+
+    function esconderPainel() {
+      jornada = null;
+      $("painel").hidden = true;
+      delete document.body.dataset.fase;
+      document.title = "Controle de Jornada";
+    }
+
+    function definirRegra(id, estado, texto) {
+      const regra = $(id);
+      regra.classList.toggle("alerta", estado === "alerta");
+      regra.classList.toggle("falha", estado === "falha");
+      regra.querySelector(".ico").textContent = { ok: "✓", alerta: "!", falha: "✕" }[estado];
+      regra.querySelector(".selo").textContent = texto;
+    }
+
+    function limitesLinhaTempo() {
+      return { inicio: jornada.entradaMin - 10, fim: jornada.saidaLimite + 10 };
+    }
+
+    function posicaoLinhaTempo(minutos) {
+      const { inicio, fim } = limitesLinhaTempo();
+      return Math.min(100, Math.max(0, ((minutos - inicio) / (fim - inicio)) * 100));
+    }
+
+    function renderizarLinhaTempo() {
+      const { entradaMin, almocoInicioMin, almocoFimMin, saidaPlanejada, saidaLimite } = jornada;
+      const pos = posicaoLinhaTempo;
+
+      const segmentos = [
+        ["trabalho primeiro", entradaMin, almocoInicioMin],
+        ["intervalo", almocoInicioMin, almocoFimMin],
+        ["trabalho", almocoFimMin, saidaPlanejada],
+        ["tolerancia", saidaPlanejada, saidaLimite]
+      ];
+
+      const marcos = [
+        [entradaMin, "Entrada"],
+        [almocoInicioMin, "Intervalo"],
+        [almocoFimMin, "Retorno"],
+        [saidaPlanejada, "Saída"],
+        [saidaLimite, "Limite"]
+      ];
+
+      $("ltBarra").innerHTML =
+        segmentos.map(([classe, de, ate]) =>
+          `<div class="lt-seg ${classe}" style="left:${pos(de)}%;width:${pos(ate) - pos(de)}%"></div>`).join("") +
+        `<div class="lt-futuro" id="ltFuturo"></div>` +
+        marcos.map(([m]) => `<div class="lt-tick" style="left:${pos(m)}%"></div>`).join("") +
+        `<div class="lt-agora" id="ltAgora"><span id="ltAgoraTexto"></span></div>`;
+
+      $("ltMarcos").innerHTML = marcos.map(([m, nome], i) => {
+        const p = pos(m);
+        const lado = p < 8 ? "esq" : p > 92 ? "dir" : "";
+        return `<div class="lt-marco ${i % 2 ? "linha2" : ""} ${lado}" style="left:${p}%"><b>${Converter_Para_Hora(m)}</b> ${nome}</div>`;
+      }).join("");
+    }
+
+    const TEXTO_FASE = {
+      antes: "Antes da entrada",
+      trabalhando: "Trabalhando",
+      intervalo: "No intervalo",
+      extra: "Hora extra",
+      excedido: "Limite excedido"
+    };
+
+    function atualizar() {
+      const agora = new Date();
+      const agoraSeg = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
+      const agoraMin = Math.floor(agoraSeg / 60);
+
+      $("relogio").innerHTML = `🕐 <b>${agora.toLocaleTimeString("pt-BR")}</b> · ${agora.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}`;
+
+      if (!jornada) return;
+
+      // Página aberta além da validade (ex.: aba esquecida de um dia para o outro)
+      if (agora.getTime() > jornada.expiraEm) {
+        limparTudo();
+        mostrarToast("🧹 Os horários do dia foram limpos automaticamente.");
+        return;
+      }
+
+      const { entradaMin, almocoInicioMin, almocoFimMin, saidaPlanejada, saidaLimite } = jornada;
+      const tempoSaida = saidaPlanejada * 60 - agoraSeg;
+      const tempoLimite = saidaLimite * 60 - agoraSeg;
+
+      let fase;
+      if (agoraMin < entradaMin) fase = "antes";
+      else if (agoraMin > saidaLimite) fase = "excedido";
+      else if (tempoSaida <= 0) fase = "extra";
+      else if (agoraMin >= almocoInicioMin && agoraMin < almocoFimMin) fase = "intervalo";
+      else fase = "trabalhando";
+
+      const emExtra = fase === "extra" || fase === "excedido";
+      const progressoJornada = Math.min(1, Math.max(0, (agoraSeg - entradaMin * 60) / ((saidaPlanejada - entradaMin) * 60)));
+      const progressoAnel = emExtra
+        ? Math.min(1, (agoraSeg - saidaPlanejada * 60) / (TOLERANCIA_HE * 60))
+        : progressoJornada;
+
+      // Anel
+      document.body.dataset.fase = fase;
+      $("anel").dataset.fase = fase;
+      $("anel").title = fase === "extra" ? "Clique para comemorar 🎉" : "";
+      $("fase").dataset.fase = fase;
+      $("fase").textContent = TEXTO_FASE[fase];
+      $("anelProgresso").style.strokeDashoffset = CIRCUNFERENCIA * (1 - progressoAnel);
+
+      const contagem = (tempoSaida < 0 ? "+" : "") + Converter_Segundos_Para_Hora(tempoSaida);
+      $("contagem").textContent = contagem;
+      $("contagemLegenda").textContent = tempoSaida > 0 ? "para a saída" : "em hora extra";
+
+      // Destaque
+      $("mensagem").innerHTML = mensagemDaFase(fase, progressoJornada);
+      $("barraPct").style.width = (progressoJornada * 100).toFixed(1) + "%";
+      $("pctLegenda").textContent = `${Math.floor(progressoJornada * 100)}% da jornada concluída`;
+
+      // Linha do tempo
+      const posAgora = posicaoLinhaTempo(agoraSeg / 60);
+      const marcador = $("ltAgora");
+      marcador.hidden = agoraSeg / 60 < limitesLinhaTempo().inicio;
+      marcador.style.left = posAgora + "%";
+      marcador.classList.toggle("borda-esq", posAgora < 8);
+      marcador.classList.toggle("borda-dir", posAgora > 92);
+      $("ltAgoraTexto").textContent = "Agora " + Converter_Para_Hora(agoraMin);
+      $("ltFuturo").style.left = posAgora + "%";
+
+      // Inconsistência de fim de jornada (agora acima da saída limite)
+      if (fase === "excedido") definirRegra("regraFim", "falha", `Excedido em ${Formatar_Duracao(agoraMin - saidaLimite)}`);
+      else if (fase === "extra") definirRegra("regraFim", "alerta", `Saia até ${Converter_Para_Hora(saidaLimite)}`);
+      else definirRegra("regraFim", "ok", "OK");
+
+      document.title = fase === "antes"
+        ? "Controle de Jornada"
+        : `${tempoSaida > 0 ? "⏳" : "⚠️"} ${contagem} · Controle de Jornada`;
+
+      // Avisos ao cruzar os horários com a página aberta
+      if (ultimoTempoSaida !== null && ultimoTempoSaida > 0 && tempoSaida <= 0) {
+        comemorar();
+        avisar("🎉 Jornada cumprida! Hora de ir embora.");
+      }
+      if (ultimoTempoLimite !== null && ultimoTempoLimite > AVISO_LIMITE * 60 && tempoLimite <= AVISO_LIMITE * 60) {
+        avisar(`⚠️ Faltam ${AVISO_LIMITE} min para a saída limite (${Converter_Para_Hora(saidaLimite)}).`);
+      }
+
+      ultimoTempoSaida = tempoSaida;
+      ultimoTempoLimite = tempoLimite;
+    }
+
+    function mensagemDaFase(fase, progresso) {
+      const { almocoFimMin, saidaPlanejada, saidaLimite } = jornada;
+      switch (fase) {
+        case "antes": return "Sua jornada ainda não começou. ☕";
+        case "intervalo": return `Bom almoço! 🍽️ Retorno às <b>${Converter_Para_Hora(almocoFimMin)}</b>.`;
+        case "extra": return `Jornada cumprida! 🎉 Saia até <b>${Converter_Para_Hora(saidaLimite)}</b> para evitar inconsistência.`;
+        case "excedido": return "Limite de hora extra ultrapassado. Registre a saída o quanto antes.";
+      }
+      if (progresso < 0.5) return `Ritmo firme — você sai às <b>${Converter_Para_Hora(saidaPlanejada)}</b>.`;
+      if (progresso < 0.85) return "Mais da metade concluída. 💪 Continue assim!";
+      return "Reta final! 🏁 Já pode ir se organizando.";
+    }
+
+    // ---------- Avisos ----------
+    function mostrarToast(texto) {
+      const toast = $("toast");
+      toast.textContent = texto;
+      toast.classList.add("ativo");
+      clearTimeout(mostrarToast.timer);
+      mostrarToast.timer = setTimeout(() => toast.classList.remove("ativo"), 6000);
+    }
+
+    function avisar(texto) {
+      mostrarToast(texto);
+      if (!avisarAtivo) return;
+      tocarSom();
+      try {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Controle de Jornada", { body: texto, icon: "clock.png" });
+        }
+      } catch (e) { /* notificações indisponíveis */ }
+    }
+
+    function tocarSom() {
+      try {
+        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        [659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = audio.createOscillator();
+          const ganho = audio.createGain();
+          const inicio = audio.currentTime + i * 0.16;
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          ganho.gain.setValueAtTime(0.0001, inicio);
+          ganho.gain.exponentialRampToValueAtTime(0.25, inicio + 0.02);
+          ganho.gain.exponentialRampToValueAtTime(0.0001, inicio + 0.5);
+          osc.connect(ganho).connect(audio.destination);
+          osc.start(inicio);
+          osc.stop(inicio + 0.55);
+        });
+      } catch (e) { /* áudio indisponível */ }
+    }
+
+    $("botaoAvisar").addEventListener("click", async () => {
+      avisarAtivo = !avisarAtivo;
+      $("botaoAvisar").setAttribute("aria-pressed", avisarAtivo);
+      if (!avisarAtivo) return;
+      try {
+        if ("Notification" in window && Notification.permission === "default") {
+          await Notification.requestPermission();
+        }
+      } catch (e) { /* segue só com aviso na página */ }
+      tocarSom();
+      mostrarToast("🔔 Combinado! Aviso na hora de sair e 10 min antes do limite.");
+    });
+
+    // ---------- Confete ----------
+    function comemorar() {
+      if (semMovimento()) return;
+
+      const canvas = $("confete");
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = innerWidth * dpr;
+      canvas.height = innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+
+      const cores = ["#00ffff", "#2869EB", "#1e90ff", "#34d399", "#fbbf24", "#f472b6", "#ffffff"];
+      const pecas = Array.from({ length: 180 }, () => ({
+        x: innerWidth / 2 + (Math.random() - 0.5) * 240,
+        y: innerHeight * 0.4,
+        vx: (Math.random() - 0.5) * 16,
+        vy: -Math.random() * 15 - 5,
+        largura: Math.random() * 6 + 5,
+        altura: Math.random() * 10 + 6,
+        rotacao: Math.random() * Math.PI,
+        giro: (Math.random() - 0.5) * 0.3,
+        cor: cores[Math.floor(Math.random() * cores.length)]
+      }));
+
+      const inicio = performance.now();
+      (function quadro(t) {
+        const decorrido = t - inicio;
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        ctx.globalAlpha = Math.max(0, 1 - decorrido / 4000);
+        pecas.forEach(p => {
+          p.vy += 0.32;
+          p.vx *= 0.99;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rotacao += p.giro;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotacao);
+          ctx.fillStyle = p.cor;
+          ctx.fillRect(-p.largura / 2, -p.altura / 2, p.largura, p.altura * Math.abs(Math.cos(p.rotacao)));
+          ctx.restore();
+        });
+        if (decorrido < 4000) requestAnimationFrame(quadro);
+        else ctx.clearRect(0, 0, innerWidth, innerHeight);
+      })(inicio);
+    }
+
+    $("anel").addEventListener("click", () => {
+      if ($("anel").dataset.fase === "extra") comemorar();
+    });
+
+    // ---------- Persistência do dia ----------
+    // Os horários ficam salvos até VALIDADE_APOS_LIMITE minutos depois da saída limite
+    // e são apagados em seguida, para não se confundirem com os de outro dia.
+    function calcularValidade(saidaLimite) {
+      const meiaNoite = new Date();
+      meiaNoite.setHours(0, 0, 0, 0);
+      return meiaNoite.getTime() + (saidaLimite + VALIDADE_APOS_LIMITE) * 60000;
+    }
+
+    function salvar() {
+      try {
+        localStorage.setItem(CHAVE, JSON.stringify({
+          expiraEm: jornada.expiraEm,
+          entrada: $("entrada").value,
+          almocoInicio: $("almocoInicio").value,
+          almocoFim: $("almocoFim").value
+        }));
+      } catch (e) { /* armazenamento indisponível */ }
+    }
+
+    function restaurar() {
+      try {
+        const salvo = JSON.parse(localStorage.getItem(CHAVE));
+        if (!salvo) return;
+
+        if (!salvo.expiraEm || Date.now() > salvo.expiraEm) {
+          localStorage.removeItem(CHAVE);
+          return;
+        }
+
+        $("entrada").value = salvo.entrada;
+        $("almocoInicio").value = salvo.almocoInicio;
+        $("almocoFim").value = salvo.almocoFim;
+        calcular();
+      } catch (e) { /* nada salvo */ }
+    }
+
+    function limparTudo() {
+      ["colagem", "entrada", "almocoInicio", "almocoFim"].forEach(id => $(id).value = "");
+      $("erro").classList.remove("ativo");
+      esconderPainel();
+      try { localStorage.removeItem(CHAVE); } catch (e) { /* ignora */ }
+    }
+
+    $("botaoLimpar").addEventListener("click", () => {
+      limparTudo();
+      $("colagem").focus();
+    });
+
+    restaurar();
+    atualizar();
+    setInterval(atualizar, 1000);
   </script>
 </body>
 </html>
