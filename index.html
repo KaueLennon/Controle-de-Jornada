@@ -627,7 +627,7 @@
         </div>
 
         <div class="destaque surgir" style="--i:1">
-          <span class="rotulo">Saída planejada</span>
+          <span class="rotulo" id="rotuloSaida">Saída planejada</span>
           <div class="saida" id="saidaGrande">--:--</div>
           <p id="mensagem"></p>
           <div class="barra-pct"><span id="barraPct"></span></div>
@@ -644,12 +644,12 @@
         <div class="tile surgir" style="--i:3">
           <span>Saída planejada</span>
           <strong id="tSaida">--:--</strong>
-          <small>Fim da jornada</small>
+          <small id="tSaidaNota">Fim da jornada</small>
         </div>
         <div class="tile surgir" style="--i:4">
           <span>Saída limite</span>
           <strong id="tLimite">--:--</strong>
-          <small>+1h12 de tolerância</small>
+          <small id="tLimiteNota">+1h12 de tolerância</small>
         </div>
       </div>
 
@@ -679,7 +679,7 @@
       </ul>
 
       <p class="regras-rodape">
-        Jornada de <b>8h48</b> + intervalo de <b>1h</b>. Intervalo menor que 1h antecipa a saída.
+        Jornada de <b id="textoJornada">8h48</b> + intervalo de <b>1h</b>. Intervalo menor que 1h antecipa a saída.
         Tolerância de <b>1h12</b> de hora extra até a saída limite.
       </p>
     </section>
@@ -688,10 +688,13 @@
   <div class="toast" id="toast" role="status"></div>
 
   <script>
-    const JORNADA_TOTAL = 588;  // 9h48: 8h48 de trabalho + 1h de intervalo
+    // Jornada (trabalho + 1h de intervalo). A página oculta "index.html#DSV" usa 8h38.
+    const JORNADA_PADRAO = 588; // 9h48: 8h48 de trabalho + 1h de intervalo
+    const JORNADA_DSV = 578;    // 9h38: 8h38 de trabalho + 1h de intervalo
+    let JORNADA_TOTAL = JORNADA_PADRAO;
     const TOLERANCIA_HE = 72;   // 1h12 de hora extra permitida
     const AVISO_LIMITE = 10;    // minutos antes da saída limite para avisar
-    const VALIDADE_APOS_LIMITE = 120; // horários salvos são apagados 2h após a saída limite
+    const HORAS_LIMPEZA = [3, 23]; // horários salvos são apagados todo dia às 3h e às 23h (em ordem crescente)
     const CHAVE = "controle-jornada";
     const CIRCUNFERENCIA = 2 * Math.PI * 86;
 
@@ -714,8 +717,9 @@
     }
 
     function Converter_Para_Hora(minutes) {
-      const h = Math.floor(Math.abs(minutes) / 60).toString().padStart(2, "0");
-      const m = Math.abs(minutes) % 60;
+      const total = Math.abs(minutes) % 1440; // após a meia-noite volta para 00:00 (ex.: 25:48 → 01:48)
+      const h = Math.floor(total / 60).toString().padStart(2, "0");
+      const m = total % 60;
       return `${h}:${m.toString().padStart(2, "0")}`;
     }
 
@@ -875,7 +879,8 @@
       esconderPainel();
     }
 
-    function calcular() {
+    // expiraEmSalvo: ao restaurar, mantém a validade original em vez de recalculá-la
+    function calcular(expiraEmSalvo) {
       const entrada = $("entrada").value;
       const almocoInicio = $("almocoInicio").value;
       const almocoFim = $("almocoFim").value;
@@ -886,8 +891,13 @@
       }
 
       const entradaMin = Converter_Para_Minutos(entrada);
-      const almocoInicioMin = Converter_Para_Minutos(almocoInicio);
-      const almocoFimMin = Converter_Para_Minutos(almocoFim);
+      let almocoInicioMin = Converter_Para_Minutos(almocoInicio);
+      let almocoFimMin = Converter_Para_Minutos(almocoFim);
+
+      // Jornada que atravessa a meia-noite (ex.: entrada 18:00, almoço 00:30): conta como dia seguinte,
+      // desde que as distâncias sejam plausíveis; caso contrário, é erro de digitação
+      if (almocoInicioMin < entradaMin && almocoInicioMin + 1440 - entradaMin <= 720) almocoInicioMin += 1440;
+      if (almocoFimMin < almocoInicioMin && almocoFimMin + 1440 - almocoInicioMin <= 360) almocoFimMin += 1440;
 
       if (almocoInicioMin < entradaMin || almocoFimMin < almocoInicioMin) {
         mostrarErro("Horários Divergentes");
@@ -899,7 +909,7 @@
       const saidaPlanejada = JORNADA_TOTAL - (60 - intervaloReal) + entradaMin;
       const saidaLimite = saidaPlanejada + TOLERANCIA_HE;
 
-      const expiraEm = calcularValidade(saidaLimite);
+      const expiraEm = expiraEmSalvo || calcularValidade(entradaMin, saidaLimite);
 
       jornada = { entradaMin, almocoInicioMin, almocoFimMin, intervaloReal, saidaPlanejada, saidaLimite, expiraEm };
       ultimoTempoSaida = null;
@@ -915,9 +925,12 @@
       const { entradaMin, almocoInicioMin, intervaloReal, saidaPlanejada, saidaLimite } = jornada;
 
       $("saidaGrande").textContent = Converter_Para_Hora(saidaPlanejada);
+      $("rotuloSaida").textContent = saidaPlanejada >= 1440 ? "Saída planejada · dia seguinte" : "Saída planejada";
       $("tIntervalo").textContent = Converter_Para_Hora(intervaloReal);
       $("tSaida").textContent = Converter_Para_Hora(saidaPlanejada);
+      $("tSaidaNota").textContent = saidaPlanejada >= 1440 ? "Fim da jornada · dia seguinte" : "Fim da jornada";
       $("tLimite").textContent = Converter_Para_Hora(saidaLimite);
+      $("tLimiteNota").textContent = saidaLimite >= 1440 ? "+1h12 · dia seguinte" : "+1h12 de tolerância";
 
       const inconsistenciaInicioIntervalo = almocoInicioMin - entradaMin < 180;
       const inconsistenciaIntervalo = intervaloReal < 30 || intervaloReal > 180;
@@ -1025,10 +1038,16 @@
       excedido: "Limite excedido"
     };
 
+    // Segundos desde a meia-noite em que a jornada começou.
+    // Depois da meia-noite, numa jornada que atravessa o dia, soma 24h para a contagem continuar certa.
+    function segundosDaJornada(agora, entradaMin, saidaLimite) {
+      const seg = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
+      if (seg < entradaMin * 60 && seg + 86400 <= (saidaLimite + 60) * 60) return seg + 86400;
+      return seg;
+    }
+
     function atualizar() {
       const agora = new Date();
-      const agoraSeg = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
-      const agoraMin = Math.floor(agoraSeg / 60);
 
       $("relogio").innerHTML = `🕐 <b>${agora.toLocaleTimeString("pt-BR")}</b> · ${agora.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}`;
 
@@ -1042,6 +1061,8 @@
       }
 
       const { entradaMin, almocoInicioMin, almocoFimMin, saidaPlanejada, saidaLimite } = jornada;
+      const agoraSeg = segundosDaJornada(agora, entradaMin, saidaLimite);
+      const agoraMin = Math.floor(agoraSeg / 60);
       const tempoSaida = saidaPlanejada * 60 - agoraSeg;
       const tempoLimite = saidaLimite * 60 - agoraSeg;
 
@@ -1224,12 +1245,26 @@
     });
 
     // ---------- Persistência do dia ----------
-    // Os horários ficam salvos até VALIDADE_APOS_LIMITE minutos depois da saída limite
+    // Os horários ficam salvos até o próximo horário de limpeza (HORAS_LIMPEZA)
     // e são apagados em seguida, para não se confundirem com os de outro dia.
-    function calcularValidade(saidaLimite) {
-      const meiaNoite = new Date();
-      meiaNoite.setHours(0, 0, 0, 0);
-      return meiaNoite.getTime() + (saidaLimite + VALIDADE_APOS_LIMITE) * 60000;
+    // Exceção: nunca apaga antes de 1h depois da saída limite, para não limpar no meio
+    // de uma jornada que atravessa a meia-noite.
+    function calcularValidade(entradaMin, saidaLimite) {
+      const agora = new Date();
+      const proximaHora = HORAS_LIMPEZA.find(h => h > agora.getHours());
+      const limpeza = new Date(agora);
+
+      if (proximaHora === undefined) {
+        limpeza.setDate(limpeza.getDate() + 1);
+        limpeza.setHours(HORAS_LIMPEZA[0], 0, 0, 0);
+      } else {
+        limpeza.setHours(proximaHora, 0, 0, 0);
+      }
+
+      const meiaNoiteDaJornada = agora.getTime() - agora.getMilliseconds() - segundosDaJornada(agora, entradaMin, saidaLimite) * 1000;
+      const fimDaJornada = meiaNoiteDaJornada + (saidaLimite + 60) * 60000;
+
+      return Math.max(limpeza.getTime(), fimDaJornada);
     }
 
     function salvar() {
@@ -1256,7 +1291,7 @@
         $("entrada").value = salvo.entrada;
         $("almocoInicio").value = salvo.almocoInicio;
         $("almocoFim").value = salvo.almocoFim;
-        calcular();
+        calcular(salvo.expiraEm);
       } catch (e) { /* nada salvo */ }
     }
 
@@ -1272,6 +1307,21 @@
       $("colagem").focus();
     });
 
+    // ---------- Página oculta (#DSV) ----------
+    function aplicarJornada() {
+      JORNADA_TOTAL = location.hash.toUpperCase() === "#DSV" ? JORNADA_DSV : JORNADA_PADRAO;
+      $("textoJornada").textContent = Formatar_Duracao(JORNADA_TOTAL - 60);
+    }
+
+    // Trocar o endereço com a página aberta recalcula com a jornada correspondente
+    window.addEventListener("hashchange", () => {
+      aplicarJornada();
+      if (!todosPreenchidos()) return;
+      if (modo === "novo") calcular();
+      else if ($("resultadoClassico").innerHTML.trim()) calcularClassico();
+    });
+
+    aplicarJornada();
     restaurar();
     atualizar();
     setInterval(atualizar, 1000);
