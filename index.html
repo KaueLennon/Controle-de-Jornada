@@ -11,12 +11,54 @@
       --card-borda: rgba(255, 255, 255, 0.1);
       --texto: #ffffff;
       --suave: #a9b1c4;
-      --azul: #2869EB;
-      --ciano: #22d3ee;
       --violeta: #a78bfa;
       --verde: #34d399;
       --ambar: #fbbf24;
       --vermelho: #fb7185;
+
+      /* Cores do tema (azul original); cada tema redefine estas variáveis no body */
+      --tema-claro: cyan;          /* início dos degradês */
+      --tema-escuro: #2869EB;      /* fim dos degradês */
+      --tema-botao: dodgerblue;    /* botões e seleção */
+      --tema-hover: deepskyblue;   /* hover e foco */
+      --tema-rgb: 0, 191, 255;     /* brilhos e fundos translúcidos */
+      --tema-texto: #22d3ee;       /* textos de destaque */
+    }
+
+    body[data-tema="rosa"] {
+      --tema-claro: #f8c8da;
+      --tema-escuro: #b8698a;
+      --tema-botao: #c47595;
+      --tema-hover: #d891ad;
+      --tema-rgb: 226, 150, 180;
+      --tema-texto: #f4b3cb;
+    }
+
+    body[data-tema="verde"] {
+      --tema-claro: #b5ecc8;
+      --tema-escuro: #4c9474;
+      --tema-botao: #4f9a78;
+      --tema-hover: #68b48f;
+      --tema-rgb: 110, 190, 150;
+      --tema-texto: #9fe0b8;
+    }
+
+    body[data-tema="vermelho"] {
+      --tema-claro: #f6b1a9;
+      --tema-escuro: #a94a53;
+      --tema-botao: #b9565f;
+      --tema-hover: #cf7178;
+      --tema-rgb: 214, 120, 126;
+      --tema-texto: #f3a39b;
+    }
+
+    body[data-tema="amarelo"] {
+      --tema-claro: #fbe6a0;
+      --tema-escuro: #b8913f;
+      --tema-botao: #b38a38;
+      --tema-hover: #c9a24e;
+      --tema-rgb: 222, 185, 100;
+      --tema-texto: #f5d98a;
     }
 
     body {
@@ -26,11 +68,96 @@
       min-height: 100vh;
       margin: 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       color: var(--texto);
       overflow-x: hidden;
     }
+
+    /* ---------- Temas de cor (o azul original fica no body; os demais aparecem por cima) ---------- */
+    .fundos {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    .fundos span {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    .fundos [data-tema="rosa"],     .temas [data-tema="rosa"]     { background-image: linear-gradient(45deg, #f3d3df, #c58aa5); }
+    .fundos [data-tema="verde"],    .temas [data-tema="verde"]    { background-image: linear-gradient(45deg, #c9e6d2, #5e9b80); }
+    .fundos [data-tema="vermelho"], .temas [data-tema="vermelho"] { background-image: linear-gradient(45deg, #f0b8b0, #b0525a); }
+    .fundos [data-tema="amarelo"],  .temas [data-tema="amarelo"]  { background-image: linear-gradient(45deg, #f5e8b8, #c9a24e); }
+    .temas [data-tema="azul"] { background-image: linear-gradient(45deg, cyan, #2869EB); }
+
+    body[data-tema="rosa"] .fundos [data-tema="rosa"],
+    body[data-tema="verde"] .fundos [data-tema="verde"],
+    body[data-tema="vermelho"] .fundos [data-tema="vermelho"],
+    body[data-tema="amarelo"] .fundos [data-tema="amarelo"] { opacity: 1; }
+
+    /* Botão 🎨 fixo no canto; as cores aparecem ao lado dele ao clicar */
+    .temas {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 15;
+    }
+
+    .temas-botao {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 2px solid rgba(var(--tema-rgb), 0.6);
+      border-radius: 50%;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      background-color: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      transition: 0.3s;
+    }
+
+    .temas-botao:hover,
+    .temas-botao[aria-expanded="true"] { transform: rotate(-15deg) scale(1.08); border-color: var(--tema-hover); }
+
+    .temas-opcoes {
+      position: absolute;
+      top: 50%;
+      right: 48px;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 99px;
+      background-color: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      transform: translateY(-50%);
+      animation: abrirTemas 0.25s ease both;
+    }
+
+    .temas-opcoes[hidden] { display: none; }
+
+    @keyframes abrirTemas {
+      from { opacity: 0; transform: translate(10px, -50%); }
+    }
+
+    .temas-opcoes button {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .temas-opcoes button:hover { transform: scale(1.15); }
+    .temas-opcoes button[aria-pressed="true"] { border-color: white; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
 
     /* ---------- Tons de fundo por situação (só aparecem quando necessário) ---------- */
     .aurora {
@@ -108,6 +235,7 @@
       .tela-hora { width: 100%; padding: 32px 24px; box-sizing: border-box; }
       .tela-hora input { box-sizing: border-box; }
       .cartao-resultado { padding: 24px 20px; }
+      .grade { padding-top: 68px; } /* espaço para o botão de tema no celular */
     }
 
     /* ---------- Formulário (igual ao original) ---------- */
@@ -148,8 +276,8 @@
 
     input:focus {
       outline: none;
-      border-color: #00bfff;
-      box-shadow: 0 0 5px #00bfff;
+      border-color: var(--tema-hover);
+      box-shadow: 0 0 5px var(--tema-hover);
     }
 
     .dica {
@@ -191,7 +319,7 @@
     }
 
     .link:hover { color: white; background-color: rgba(255, 255, 255, 0.1); }
-    .link[aria-pressed="true"] { color: deepskyblue; background-color: rgba(0, 191, 255, 0.12); }
+    .link[aria-pressed="true"] { color: var(--tema-hover); background-color: rgba(var(--tema-rgb), 0.12); }
 
     /* ---------- Seletor de modo ---------- */
     .modos {
@@ -214,7 +342,7 @@
     }
 
     .modos button:hover { color: white; }
-    .modos button[aria-pressed="true"] { background-color: dodgerblue; color: white; }
+    .modos button[aria-pressed="true"] { background-color: var(--tema-botao); color: white; }
 
     /* ---------- Modo clássico (código original) ---------- */
     .so-classico { display: none; }
@@ -223,7 +351,7 @@
     body.modo-classico h1 { margin-bottom: 30px; }
 
     .botao {
-      background-color: dodgerblue;
+      background-color: var(--tema-botao);
       border: none;
       padding: 15px;
       width: 100%;
@@ -235,7 +363,7 @@
     }
 
     .botao:hover {
-      background-color: deepskyblue;
+      background-color: var(--tema-hover);
       cursor: pointer;
       transform: scale(1.03);
     }
@@ -293,7 +421,7 @@
       stroke: url(#gNormal);
       stroke-linecap: round;
       transition: stroke-dashoffset 1s ease;
-      filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.55));
+      filter: drop-shadow(0 0 8px rgba(var(--tema-rgb), 0.55));
     }
 
     .anel[data-fase="intervalo"] .progresso { stroke: url(#gIntervalo); filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.55)); }
@@ -327,8 +455,8 @@
       font-weight: bold;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--ciano);
-      background: rgba(34, 211, 238, 0.12);
+      color: var(--tema-texto);
+      background: rgba(var(--tema-rgb), 0.14);
     }
 
     .chip::before {
@@ -354,7 +482,7 @@
       font-weight: bold;
       line-height: 1.05;
       font-variant-numeric: tabular-nums;
-      background: linear-gradient(120deg, #fff 30%, var(--ciano));
+      background: linear-gradient(120deg, #fff 30%, var(--tema-texto));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -369,7 +497,7 @@
       height: 100%;
       width: 0;
       border-radius: inherit;
-      background-image: linear-gradient(90deg, cyan, #2869EB);
+      background-image: linear-gradient(90deg, var(--tema-claro), var(--tema-escuro));
       transition: width 1s ease;
     }
 
@@ -392,7 +520,7 @@
       transition: transform 0.25s, border-color 0.25s;
     }
 
-    .tile:hover { transform: translateY(-3px); border-color: rgba(0, 191, 255, 0.5); }
+    .tile:hover { transform: translateY(-3px); border-color: rgba(var(--tema-rgb), 0.5); }
     .tile span { display: block; color: var(--suave); font-size: 12px; }
     .tile strong { display: block; margin: 6px 0 2px; font-size: 22px; font-variant-numeric: tabular-nums; }
     .tile small { color: #7d869b; font-size: 11px; }
@@ -409,7 +537,7 @@
     .lt { position: relative; padding-top: 30px; }
     .lt-barra { position: relative; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); }
     .lt-seg { position: absolute; top: 0; height: 100%; }
-    .lt-seg.trabalho { background-image: linear-gradient(90deg, cyan, #2869EB); }
+    .lt-seg.trabalho { background-image: linear-gradient(90deg, var(--tema-claro), var(--tema-escuro)); }
     .lt-seg.primeiro { border-radius: 99px 0 0 99px; }
     .lt-seg.intervalo { background: repeating-linear-gradient(-45deg, rgba(167, 139, 250, 0.9) 0 4px, rgba(167, 139, 250, 0.45) 4px 8px); }
     .lt-seg.tolerancia { background: linear-gradient(90deg, var(--ambar), var(--vermelho)); border-radius: 0 99px 99px 0; }
@@ -567,8 +695,22 @@
   </style>
 </head>
 <body>
+  <div class="fundos" aria-hidden="true">
+    <span data-tema="rosa"></span><span data-tema="verde"></span><span data-tema="vermelho"></span><span data-tema="amarelo"></span>
+  </div>
   <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
   <canvas id="confete" aria-hidden="true"></canvas>
+
+  <nav class="temas" id="temas" aria-label="Tema de cores">
+    <button class="temas-botao" id="botaoTemas" aria-expanded="false" aria-controls="temasOpcoes" title="Tema de cores">🎨</button>
+    <div class="temas-opcoes" id="temasOpcoes" hidden>
+    <button data-tema="azul" title="Azul" aria-label="Tema azul" aria-pressed="true"></button>
+    <button data-tema="rosa" title="Rosa" aria-label="Tema rosa" aria-pressed="false"></button>
+    <button data-tema="verde" title="Verde" aria-label="Tema verde" aria-pressed="false"></button>
+    <button data-tema="vermelho" title="Vermelho" aria-label="Tema vermelho" aria-pressed="false"></button>
+    <button data-tema="amarelo" title="Amarelo" aria-label="Tema amarelo" aria-pressed="false"></button>
+    </div>
+  </nav>
 
   <main class="grade">
     <!-- Cartão original -->
@@ -611,7 +753,7 @@
         <div class="anel surgir" id="anel">
           <svg viewBox="0 0 200 200" aria-hidden="true">
             <defs>
-              <linearGradient id="gNormal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00ffff"/><stop offset="1" stop-color="#2869EB"/></linearGradient>
+              <linearGradient id="gNormal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--tema-claro)"/><stop offset="1" style="stop-color: var(--tema-escuro)"/></linearGradient>
               <linearGradient id="gIntervalo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
               <linearGradient id="gExtra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
               <linearGradient id="gExcedido" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fda4af"/><stop offset="1" stop-color="#e11d48"/></linearGradient>
@@ -696,6 +838,7 @@
     const AVISO_LIMITE = 10;    // minutos antes da saída limite para avisar
     const HORAS_LIMPEZA = [3, 23]; // horários salvos são apagados todo dia às 3h e às 23h (em ordem crescente)
     const CHAVE = "controle-jornada";
+    const CHAVE_TEMA = "controle-jornada-tema";
     const CIRCUNFERENCIA = 2 * Math.PI * 86;
 
     const $ = id => document.getElementById(id);
@@ -1204,7 +1347,9 @@
       canvas.height = innerHeight * dpr;
       ctx.scale(dpr, dpr);
 
-      const cores = ["#00ffff", "#2869EB", "#1e90ff", "#34d399", "#fbbf24", "#f472b6", "#ffffff"];
+      const estilo = getComputedStyle(document.body);
+      const tema = ["--tema-claro", "--tema-escuro", "--tema-botao"].map(v => estilo.getPropertyValue(v).trim());
+      const cores = [...tema, "#34d399", "#fbbf24", "#f472b6", "#ffffff"];
       const pecas = Array.from({ length: 180 }, () => ({
         x: innerWidth / 2 + (Math.random() - 0.5) * 240,
         y: innerHeight * 0.4,
@@ -1306,6 +1451,37 @@
       limparTudo();
       $("colagem").focus();
     });
+
+    // ---------- Temas de cor ----------
+    const botoesTema = document.querySelectorAll(".temas-opcoes button");
+
+    function mostrarOpcoesTema(mostrar) {
+      $("temasOpcoes").hidden = !mostrar;
+      $("botaoTemas").setAttribute("aria-expanded", mostrar);
+    }
+
+    $("botaoTemas").addEventListener("click", () => mostrarOpcoesTema($("temasOpcoes").hidden));
+
+    // Fecha ao clicar fora ou apertar Esc
+    document.addEventListener("click", e => {
+      if (!$("temas").contains(e.target)) mostrarOpcoesTema(false);
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") mostrarOpcoesTema(false);
+    });
+
+    function aplicarTema(tema) {
+      const valido = [...botoesTema].some(b => b.dataset.tema === tema);
+      if (!valido) tema = "azul";
+
+      document.body.dataset.tema = tema;
+      botoesTema.forEach(b => b.setAttribute("aria-pressed", b.dataset.tema === tema));
+      try { localStorage.setItem(CHAVE_TEMA, tema); } catch (e) { /* armazenamento indisponível */ }
+    }
+
+    botoesTema.forEach(b => b.addEventListener("click", () => aplicarTema(b.dataset.tema)));
+
+    try { aplicarTema(localStorage.getItem(CHAVE_TEMA)); } catch (e) { aplicarTema("azul"); }
 
     // ---------- Página oculta (#DSV) ----------
     function aplicarJornada() {
