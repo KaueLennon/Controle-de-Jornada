@@ -531,6 +531,30 @@
       color: var(--suave);
       text-transform: uppercase;
       letter-spacing: 0.08em;
+      transition: color 0.4s;
+    }
+
+    /* Título "Inconsistências" chama a atenção quando há inconsistência */
+    .secao-titulo.com-falha {
+      color: var(--vermelho);
+      animation: piscarTitulo 1.6s ease-in-out infinite;
+    }
+
+    .secao-titulo .contador {
+      display: inline-block;
+      min-width: 18px;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 11px;
+      letter-spacing: 0;
+      text-align: center;
+      color: #fff;
+      background-color: #e11d48;
+    }
+
+    @keyframes piscarTitulo {
+      50% { opacity: 0.55; }
     }
 
     /* ---------- Linha do tempo ---------- */
@@ -801,7 +825,7 @@
         <div class="lt-marcos" id="ltMarcos"></div>
       </div>
 
-      <h3 class="secao-titulo">Inconsistências</h3>
+      <h3 class="secao-titulo" id="tituloInconsistencias">Inconsistências</h3>
       <ul class="regras">
         <li class="regra surgir" style="--i:7" id="regraInicio">
           <span class="ico">✓</span>
@@ -1129,6 +1153,20 @@
       regra.classList.toggle("falha", estado === "falha");
       regra.querySelector(".ico").textContent = { ok: "✓", alerta: "!", falha: "✕" }[estado];
       regra.querySelector(".selo").textContent = texto;
+      atualizarTituloInconsistencias();
+    }
+
+    // Vermelho com contador apenas quando há inconsistência de fato
+    function atualizarTituloInconsistencias() {
+      const titulo = $("tituloInconsistencias");
+      const falhas = document.querySelectorAll(".regra.falha").length;
+
+      titulo.classList.toggle("com-falha", falhas > 0);
+
+      const html = falhas > 0
+        ? `⚠ Inconsistências <span class="contador">${falhas}</span>`
+        : "Inconsistências";
+      if (titulo.innerHTML !== html) titulo.innerHTML = html;
     }
 
     function limitesLinhaTempo() {
