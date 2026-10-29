@@ -1540,5 +1540,15 @@
     atualizar();
     setInterval(atualizar, 1000);
   </script>
+
+  <!-- Contador de acessos (GoatCounter, sem cookies). A página #DSV é contada separadamente. -->
+  <script>
+    window.goatcounter = {
+      path: function(caminho) {
+        return location.hash.toUpperCase() === "#DSV" ? caminho + "#DSV" : caminho;
+      }
+    };
+  </script>
+  <script data-goatcounter="https://controle-jornada-kaue.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
