@@ -503,6 +503,65 @@
 
     .pct-legenda { margin-top: 8px; color: var(--suave); font-size: 12px; font-variant-numeric: tabular-nums; }
 
+    /* ---------- Compartilhar ---------- */
+    .cartao-resultado { position: relative; }
+
+    /* Ícone discreto no canto superior direito do cartão */
+    .compartilhar { position: absolute; top: 14px; right: 14px; z-index: 5; }
+
+    .botao-compartilhar {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: none;
+      color: var(--suave);
+      opacity: 0.55;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .botao-compartilhar svg { width: 18px; height: 18px; }
+
+    .botao-compartilhar:hover,
+    .botao-compartilhar[aria-expanded="true"] { opacity: 1; color: var(--tema-texto); background-color: rgba(255, 255, 255, 0.08); }
+
+    .opcoes-compartilhar {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      min-width: 190px;
+      padding: 6px;
+      border-radius: 12px;
+      background-color: rgba(10, 12, 20, 0.97);
+      border: 1px solid var(--card-borda);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      animation: surgir 0.2s ease both;
+    }
+
+    .opcoes-compartilhar[hidden] { display: none; }
+
+    .opcoes-compartilhar button {
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      color: var(--texto);
+      font: inherit;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .opcoes-compartilhar button:hover { background-color: rgba(var(--tema-rgb), 0.15); }
+    .opcoes-compartilhar button[hidden] { display: none; }
+
     .tiles {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -773,6 +832,18 @@
 
     <!-- Cartão de informações (aparece após calcular) -->
     <section class="cartao-resultado so-novo" id="painel" aria-live="polite" hidden>
+      <!-- Compartilhar: ícone discreto no canto do cartão -->
+      <div class="compartilhar" id="compartilhar">
+        <button class="botao-compartilhar" id="botaoCompartilhar" aria-expanded="false" aria-controls="opcoesCompartilhar" title="Compartilhar meu horário" aria-label="Compartilhar meu horário">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
+        <div class="opcoes-compartilhar" id="opcoesCompartilhar" hidden>
+          <button data-acao="copiar">📋 Copiar texto</button>
+          <button data-acao="whatsapp">💬 WhatsApp</button>
+          <button data-acao="mais" id="compartilharMais" hidden>📤 Mais opções…</button>
+        </div>
+      </div>
+
       <div class="resumo">
         <div class="anel surgir" id="anel">
           <svg viewBox="0 0 200 200" aria-hidden="true">
@@ -1260,6 +1331,8 @@
         ? Math.min(1, (agoraSeg - saidaPlanejada * 60) / (TOLERANCIA_HE * 60))
         : progressoJornada;
 
+      jornada.fase = fase; // usada no texto de compartilhar
+
       // Anel
       document.body.dataset.fase = fase;
       $("anel").dataset.fase = fase;
@@ -1321,6 +1394,104 @@
       if (progresso < 0.85) return "Mais da metade concluída. 💪 Continue assim!";
       return "Reta final! 🏁 Já pode ir se organizando.";
     }
+
+    // ---------- Compartilhar ----------
+    // Uma frase descontraída conforme o momento do dia; cada envio sorteia uma versão
+    function textoCompartilhar() {
+      const { entradaMin, almocoFimMin, saidaPlanejada, saidaLimite, fase } = jornada;
+      const agoraMin = Math.floor(segundosDaJornada(new Date(), entradaMin, saidaLimite) / 60);
+      const restante = saidaPlanejada - agoraMin;
+
+      const saida = Converter_Para_Hora(saidaPlanejada) + (saidaPlanejada >= 1440 ? " (já de madrugada 🌙)" : "");
+      const falta = Formatar_Duracao(Math.max(restante, 1));
+      const extra = Formatar_Duracao(Math.max(-restante, 1));
+      const retorno = Converter_Para_Hora(almocoFimMin);
+      const entrada = Converter_Para_Hora(entradaMin);
+
+      const frases = {
+        antes: [
+          `Bom dia! Hoje eu entro às ${entrada} e saio às ${saida}. Bora que o dia promete! 💪`,
+          `Spoiler do dia: chego às ${entrada} e às ${saida} eu tô liberado(a)! 😎`
+        ],
+        trabalhando: restante <= 60 ? [
+          `Reta final! Saio às ${saida}, faltam só ${falta}! Já tô de olho na porta 👀🚪`,
+          `Falta pouquinho! Só mais ${falta} e às ${saida} eu tô livre! 🎉`,
+          `Contagem regressiva: ${falta} pra eu sair às ${saida}! Já pode ir esquentando o motor 🏃💨`
+        ] : [
+          `Oi! Hoje eu saio às ${saida} — faltam só ${falta} pra liberdade! 🏃💨`,
+          `Atualização oficial: saio às ${saida}! Ainda faltam ${falta}… mas quem tá contando? 👀⏳`,
+          `Anota aí: às ${saida} eu tô fora! Só faltam ${falta} 😄`
+        ],
+        intervalo: [
+          `Tô no almoço agora! Volto às ${retorno} e saio às ${saida} — faltam ${falta} 😋`,
+          `Pausa pro rango! Saio às ${saida}, faltam ${falta} (contando o almoço, claro 🍝)`
+        ],
+        extra: [
+          `Era pra eu sair às ${saida}… já tô há ${extra} na hora extra! Me salvem 😅`,
+          `Modo herói ativado: ${extra} de hora extra! A saída era às ${saida} 😮‍💨`
+        ],
+        excedido: [
+          `Passei do limite de hora extra! Era pra sair às ${saida} 😱 Tô indo embora AGORA! 🏃💨`
+        ]
+      }[fase];
+
+      return frases[Math.floor(Math.random() * frases.length)];
+    }
+
+    async function copiarTexto(texto) {
+      try {
+        await navigator.clipboard.writeText(texto);
+      } catch (e) {
+        // Alternativa para navegadores/arquivos locais sem acesso à área de transferência
+        const area = document.createElement("textarea");
+        area.value = texto;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+    }
+
+    function mostrarOpcoesCompartilhar(mostrar) {
+      $("opcoesCompartilhar").hidden = !mostrar;
+      $("botaoCompartilhar").setAttribute("aria-expanded", mostrar);
+    }
+
+    $("compartilharMais").hidden = !navigator.share;
+
+    $("botaoCompartilhar").addEventListener("click", () => mostrarOpcoesCompartilhar($("opcoesCompartilhar").hidden));
+
+    $("opcoesCompartilhar").addEventListener("click", async e => {
+      const acao = e.target.closest("button")?.dataset.acao;
+      if (!acao || !jornada) return;
+
+      const texto = textoCompartilhar();
+      mostrarOpcoesCompartilhar(false);
+
+      if (acao === "copiar") {
+        await copiarTexto(texto);
+        mostrarToast("📋 Copiado! É só colar no Teams, WhatsApp ou e-mail.");
+      } else if (acao === "whatsapp") {
+        // Endereço direto: o redirecionamento do wa.me corrompe os emojis (viram "�").
+        // A mensagem também é copiada, para colar caso algum emoji ainda chegue quebrado.
+        await copiarTexto(texto);
+        window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(texto), "_blank", "noopener");
+        mostrarToast("💬 Abrindo o WhatsApp… a mensagem também foi copiada (Ctrl+V).");
+      } else if (acao === "mais") {
+        try { await navigator.share({ title: "Meu horário de hoje", text: texto }); }
+        catch (erro) { /* compartilhamento cancelado */ }
+      }
+    });
+
+    // Fecha ao clicar fora ou apertar Esc
+    document.addEventListener("click", e => {
+      if (!$("compartilhar").contains(e.target)) mostrarOpcoesCompartilhar(false);
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") mostrarOpcoesCompartilhar(false);
+    });
 
     // ---------- Avisos ----------
     function mostrarToast(texto) {
